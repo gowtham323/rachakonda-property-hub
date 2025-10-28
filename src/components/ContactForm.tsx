@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
+import emailjs from '@emailjs/browser';
 
 const ContactForm = () => {
   const { toast } = useToast();
@@ -44,26 +45,43 @@ const ContactForm = () => {
     }
 
     try {
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      // Using EmailJS for completely free email sending
+      const templateParams = {
+        to_name: 'Rachakonda Muthyalu',
+        from_name: formData.name,
+        from_email: formData.email,
+        from_phone: formData.phone,
+        message: formData.message || 'No message provided',
+        reply_to: formData.email,
+      };
       
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/send-contact-email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify(formData),
-        }
+      const result = await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID!,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID!,
+        templateParams,
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY!
       );
+      
+      console.log('Email sent successfully:', result);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to send message");
-      }
+      // Send auto-reply confirmation email to customer
+      const confirmationParams = {
+        to_name: formData.name,
+        to_email: formData.email,
+        from_name: 'Rachakonda Real Estate',
+        customer_name: formData.name,
+        customer_phone: formData.phone,
+        customer_message: formData.message || 'No message provided',
+      };
+      
+      // Note: You'll need to create a second template for customer confirmation
+      // For now, we'll just send the main email
+      // await emailjs.send(
+      //   import.meta.env.VITE_EMAILJS_SERVICE_ID!,
+      //   'customer_confirmation_template', // You'll create this template later
+      //   confirmationParams,
+      //   import.meta.env.VITE_EMAILJS_PUBLIC_KEY!
+      // );
 
       toast({
         title: "Message Sent!",
@@ -71,7 +89,7 @@ const ContactForm = () => {
       });
       
       setFormData({ name: "", email: "", phone: "", message: "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Contact form error:", error);
       toast({
         title: "Error",
